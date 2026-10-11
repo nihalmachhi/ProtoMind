@@ -1,0 +1,15 @@
+services:
+  api:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      PROTOMIND_DATABASE: /app/data/protomind.sqlite3
+      PROTOMIND_CAPTURE_DIR: /app/data/captures
+      PROTOMIND_RUN_DIR: /app/data/runs
+    volumes: [protomind_data:/app/data]
+  dashboard:
+    build: ./dashboard
+    ports: ["5173:80"]
+    depends_on: [api]
+volumes:
+  protomind_data:
