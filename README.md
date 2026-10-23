@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/readme-icon.png" alt="ProtoMind icon" width="112" />
+</p>
+
 # ProtoMind
 
 ProtoMind is a local-first protocol discovery workbench. Import an authorized PCAP/PCAPNG capture, reassemble TCP streams, infer candidate framing, group observed message types, classify byte fields, learn a prefix-tree Mealy model, and export JSON, Markdown, and Mermaid artifacts.
