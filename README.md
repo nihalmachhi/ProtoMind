@@ -4,6 +4,23 @@ ProtoMind is a local-first protocol discovery workbench. Import an authorized PC
 
 The first build focuses on a transparent, reproducible baseline for plaintext lab protocols such as TinyKV. Statistical inference is kept separate from any optional language-model naming; no language model makes structural decisions. Active probes are only allowed to literal loopback IP addresses in this build. Hostnames and external/private-network targets are refused.
 
+## How it works
+
+ProtoMind passively turns an authorized capture into candidate protocol structure. Each inferred boundary, field label, and state transition is a hypothesis that should be checked against the trace.
+
+```mermaid
+flowchart LR
+  A[Authorized PCAP or PCAPNG] --> B[Offline packet parsing]
+  B --> C[TCP stream reassembly]
+  C --> D[Candidate frame segmentation]
+  D --> E[Message grouping and field hypotheses]
+  E --> F[Prefix-tree Mealy model]
+  F --> G[JSON, Markdown, and Mermaid spec]
+  G --> H[React dashboard]
+```
+
+Statistical inference makes structural decisions; optional language-model naming is kept separate. Active experiments are disabled by default and restricted to literal loopback targets. Encrypted or compressed payloads cannot be inferred by this build.
+
 ## Run locally
 
 Requires Python 3.11+ and Node.js 20+.
@@ -65,3 +82,4 @@ npm run build
 ## Limits
 
 Encrypted or compressed application payloads are not decoded. TCP overlap handling and message framing are intentionally conservative; inferred boundaries and field labels are hypotheses with confidence, not protocol truth. This build does not claim 90% field-boundary F1 until evaluated on labeled captures. Active state learning is not enabled by default. Do not upload captures containing secrets to a shared repository.
+
