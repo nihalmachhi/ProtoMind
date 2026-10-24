@@ -13,14 +13,19 @@ The first build focuses on a transparent, reproducible baseline for plaintext la
 ProtoMind passively turns an authorized capture into candidate protocol structure. Each inferred boundary, field label, and state transition is a hypothesis that should be checked against the trace.
 
 ```mermaid
-flowchart LR
+flowchart TD
   A[Authorized PCAP or PCAPNG] --> B[Offline packet parsing]
-  B --> C[TCP stream reassembly]
-  C --> D[Candidate frame segmentation]
-  D --> E[Message grouping and field hypotheses]
-  E --> F[Prefix-tree Mealy model]
-  F --> G[JSON, Markdown, and Mermaid spec]
-  G --> H[React dashboard]
+  B --> C[Reassemble TCP streams]
+  C --> D[Infer candidate frame boundaries]
+  D --> E[Group observed messages]
+  E --> F[Classify byte-field hypotheses]
+  F --> G[Learn prefix-tree Mealy model]
+  G --> H[Review inferred states and transitions]
+  H --> I[Export JSON, Markdown, and Mermaid specification]
+  H --> J[React dashboard]
+  I --> J
+  K[Optional active experiment] -. literal loopback only .-> A
+  K -. disabled by default .-> J
 ```
 
 Statistical inference makes structural decisions; optional language-model naming is kept separate. Active experiments are disabled by default and restricted to literal loopback targets. Encrypted or compressed payloads cannot be inferred by this build.
