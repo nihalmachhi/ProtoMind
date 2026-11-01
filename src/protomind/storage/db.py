@@ -59,7 +59,7 @@ class RunStore:
                 (experiment_id, target, sent, received),
             )
 
-    def get_run(self, run_id: str) -> dict | None:
+    def get_run(self, run_id: str) -> dict[str, object] | None:
         with self.connect() as db:
             row = db.execute("SELECT * FROM runs WHERE run_id=?", (run_id,)).fetchone()
         return dict(row) if row else None

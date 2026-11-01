@@ -29,12 +29,12 @@ class ByteStream:
 
 def read_capture(path: str | Path) -> list[ByteStream]:
     """Read a pcap incrementally and assemble directional payload byte streams."""
-    flows: dict[tuple, Stream] = {}
+    flows: dict[tuple[str, int, str, int, str], Stream] = {}
     with PcapReader(str(path)) as reader:
         for packet in reader:
             if TCP not in packet and UDP not in packet:
                 continue
-            layer = packet[IP] if IP in packet else packet[IPv6] if IPv6 in packet else None
+            layer = packet[IP] if IP in packet else packet.get(IPv6, None)
             if layer is None:
                 continue
             transport = packet[TCP] if TCP in packet else packet[UDP]

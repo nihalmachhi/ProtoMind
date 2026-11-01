@@ -8,7 +8,7 @@ lint:
 	uv run ruff check .
 
 format:
-	uv run ruff format protomind tests
+	uv run ruff format src tests
 
 run:
 	uv run uvicorn protomind.api.main:app --reload

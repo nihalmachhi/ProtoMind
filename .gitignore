@@ -10,4 +10,6 @@ data/captures/*
 !data/captures/.gitkeep
 dashboard/node_modules/
 dashboard/dist/
+!site/src/data/
+!site/src/data/**
 data/runs/

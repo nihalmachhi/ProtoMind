@@ -69,7 +69,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         row = store.get_run(run_id)
         if row is None:
             raise HTTPException(404, "Run not found")
-        result = json.loads(row["result_json"]) if row["result_json"] else None
+        result = json.loads(str(row["result_json"])) if row["result_json"] else None
         return {
             "run_id": run_id,
             "capture_name": row["capture_name"],

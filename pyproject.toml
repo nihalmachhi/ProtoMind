@@ -7,20 +7,43 @@ name = "protomind"
 version = "0.1.0"
 description = "Authorized protocol discovery from captures and controlled lab protocols"
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1", "pydantic-settings>=2.5,<3", "scapy>=2.6,<3", "python-multipart>=0.0.12,<1"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3,<9", "hypothesis>=6.112,<7", "httpx>=0.27,<1", "ruff>=0.6,<1", "mypy>=1.11,<2"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["protomind"]
+packages = ["src/protomind"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = ["src"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "SIM", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+packages = ["protomind"]
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["scapy.*", "yaml.*"]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["protomind"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
