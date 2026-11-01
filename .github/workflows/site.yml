@@ -32,7 +32,7 @@ jobs:
         working-directory: site
         env:
           VITE_BASE: /ProtoMind/
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site/dist
 
