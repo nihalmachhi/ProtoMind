@@ -7,9 +7,6 @@ services:
       PROTOMIND_CAPTURE_DIR: /app/data/captures
       PROTOMIND_RUN_DIR: /app/data/runs
     volumes: [protomind_data:/app/data]
-  dashboard:
-    build: ./dashboard
-    ports: ["5173:80"]
-    depends_on: [api]
+  # dashboard removed; see site/ for the React frontend
 volumes:
   protomind_data:
