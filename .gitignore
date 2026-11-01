@@ -13,3 +13,5 @@ dashboard/dist/
 !site/src/data/
 !site/src/data/**
 data/runs/
+
+.coverage
