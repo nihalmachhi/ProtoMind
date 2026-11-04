@@ -23,6 +23,36 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy src
       - run: uv run pytest -q --cov=protomind --cov-fail-under=80
+      - name: Regenerate evaluation and fixtures
+        run: |
+          uv run python -m protomind.evaluation
+          uv run python site/scripts/export_fixtures.py
+      - name: Fail on generated-artifact drift
+        run: |
+          git diff --exit-code -- \
+            docs/evaluation.json \
+            docs/evaluation.md \
+            site/src/data/results.generated.json \
+            site/src/features/simulator/__fixtures__
+
+  site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
   docker:
     runs-on: ubuntu-latest
     steps:

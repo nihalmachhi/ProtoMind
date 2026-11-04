@@ -1,40 +1,35 @@
+"""Export site fixtures from the Python pipeline.
+
+Run from the repository root:
+
+    uv run python site/scripts/export_fixtures.py
+
+The generated JSON files are committed so the site builds without Python.
+"""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
-from cipherscope.features.beacon import periodicity_score
+from protomind.evaluation import evaluate, framing_fixtures
 
 ROOT = Path(__file__).resolve().parents[2]
-REPORT = ROOT / "output" / "reports" / "synthetic-evaluation.json"
-OUT = Path(__file__).resolve().parents[1] / "src" / "features" / "simulator" / "__fixtures__"
-DATA = Path(__file__).resolve().parents[1] / "src" / "data"
+SITE = Path(__file__).resolve().parents[1]
+DATA = SITE / "src" / "data"
+SIM = SITE / "src" / "features" / "simulator" / "__fixtures__"
+
+
+def _dump(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
-    DATA.mkdir(parents=True, exist_ok=True)
-
-    cases = {
-        "regular_beacon": [0.0, 30.0, 60.0, 90.0, 120.0, 150.0],
-        "jittered": [0.0, 28.0, 63.0, 89.0, 125.0, 148.0],
-        "web_burst": [0.0, 0.2, 0.4, 5.0, 5.1, 10.0],
-    }
-    fixtures = {
-        name: {"times": times, "result": periodicity_score(times)} for name, times in cases.items()
-    }
-    (OUT / "beacon.json").write_text(json.dumps(fixtures, indent=2), encoding="utf-8")
-
-    report = json.loads(REPORT.read_text(encoding="utf-8"))
-    s1 = report["splits"]["S1_random_caution_only"]["summary"]["macro_f1"]
-    s4 = report["splits"]["S4_cross_dataset"]["summary"]["macro_f1"]
-    results = {
-        "random_split": {"macro_f1": s1["mean"], "std": s1["std"]},
-        "cross_environment": {"macro_f1": s4["mean"], "std": s4["std"]},
-        "robustness": report["robustness"],
-        "data_kind": report["data_kind"],
-    }
-    (DATA / "results.generated.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
+    _dump(DATA / "results.generated.json", evaluate())
+    _dump(SIM / "framing.generated.json", framing_fixtures())
+    print(f"wrote fixtures under {DATA} and {SIM}")
 
 
 if __name__ == "__main__":

@@ -26,9 +26,20 @@ def split_delimited(stream: bytes, delimiter: bytes) -> list[bytes]:
     return result
 
 
+def _printable_ratio(data: bytes) -> float:
+    if not data:
+        return 0.0
+    return sum(32 <= byte < 127 or byte in (9, 10, 13) for byte in data) / len(data)
+
+
 def delimiter_candidate(streams: list[bytes]) -> Segmentation | None:
     best: Segmentation | None = None
+    combined = b"".join(streams)
     for delimiter in (b"\r\n", b"\n", b"\x00"):
+        # A NUL byte is a common length-prefix byte. Only treat it as a text
+        # delimiter when the stream is overwhelmingly printable.
+        if delimiter == b"\x00" and _printable_ratio(combined) < 0.85:
+            continue
         messages = [msg for stream in streams for msg in split_delimited(stream, delimiter)]
         terminated = sum(stream.count(delimiter) for stream in streams)
         total = len(messages)

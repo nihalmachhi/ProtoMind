@@ -19,3 +19,10 @@ def test_length_prefix_finds_big_endian_payload_lengths():
     assert result is not None
     assert result.params["width"] == 2
     assert len(result.messages) == 2
+
+
+def test_binary_length_prefix_is_not_mistaken_for_a_nul_delimiter():
+    stream = b"\x00\x03abc\x00\x02de"
+    result = infer_framing([stream])
+    assert result.kind == "length_prefix"
+    assert result.params["width"] == 2

@@ -31,7 +31,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     captures, runs = Path(config.capture_dir), Path(config.run_dir)
     captures.mkdir(parents=True, exist_ok=True)
     runs.mkdir(parents=True, exist_ok=True)
-    app = FastAPI(title="ProtoMind", version="0.1.0")
+    app = FastAPI(title="ProtoMind", version="0.2.0")
     app.state.store = store
     app.add_middleware(
         CORSMiddleware, allow_origins=config.origins(), allow_methods=["*"], allow_headers=["*"]
@@ -100,6 +100,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(403, str(exc)) from exc
         try:
             reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=2)
+        except (OSError, TimeoutError) as exc:
+            raise HTTPException(502, "The local lab target did not return a reply") from exc
+        try:
             writer.write(request.message.encode("utf-8") + b"\r\n")
             await writer.drain()
             output = (
@@ -107,12 +110,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 .decode("utf-8", "replace")
                 .rstrip()
             )
-            writer.close()
-            await writer.wait_closed()
         except (OSError, TimeoutError) as exc:
             raise HTTPException(502, "The local lab target did not return a reply") from exc
+        finally:
+            writer.close()
+            await writer.wait_closed()
         safe_input = redact_message(request.message.encode()).decode("utf-8", "replace")
-        store.log_experiment(uuid4().hex, request.target, safe_input, output)
+        safe_output = redact_message(output.encode()).decode("utf-8", "replace")
+        store.log_experiment(uuid4().hex, request.target, safe_input, safe_output)
         return {"target": request.target, "input": request.message, "output": output}
 
     return app

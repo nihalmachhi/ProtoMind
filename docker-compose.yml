@@ -1,12 +1,27 @@
 services:
   api:
     build: .
-    ports: ["8000:8000"]
+    ports: ["127.0.0.1:8000:8000"]
     environment:
       PROTOMIND_DATABASE: /app/data/protomind.sqlite3
       PROTOMIND_CAPTURE_DIR: /app/data/captures
       PROTOMIND_RUN_DIR: /app/data/runs
+      PROTOMIND_MAX_UPLOAD_MB: "50"
+      PROTOMIND_CORS_ORIGIN: http://localhost:5173
     volumes: [protomind_data:/app/data]
-  # dashboard removed; see site/ for the React frontend
+    user: "10001:10001"
+    read_only: true
+    tmpfs: [/tmp:rw,noexec,nosuid,size=16m]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 20s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits: { memory: 256M, cpus: "0.75", pids: 64 }
+
 volumes:
   protomind_data:

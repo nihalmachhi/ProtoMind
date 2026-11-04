@@ -1,0 +1,79 @@
+[
+  {
+    "expected": {
+      "kind": "delimiter",
+      "messages_hex": [
+        "48454c4c4f2064656d6f0d0a",
+        "415554482064656d6f2064656d6f0d0a",
+        "515549540d0a",
+        "2b4f4b0d0a",
+        "2b4f4b0d0a",
+        "2b4259450d0a"
+      ],
+      "params": {
+        "delimiter_hex": "0d0a"
+      },
+      "score": 1.0
+    },
+    "name": "tinykv_delimiter",
+    "streams_hex": [
+      "48454c4c4f2064656d6f0d0a415554482064656d6f2064656d6f0d0a515549540d0a",
+      "2b4f4b0d0a2b4f4b0d0a2b4259450d0a"
+    ]
+  },
+  {
+    "expected": {
+      "kind": "length_prefix",
+      "messages_hex": [
+        "000947455420616c706861",
+        "000c53455420626574612074776f",
+        "00024f4b"
+      ],
+      "params": {
+        "endian": "big",
+        "offset": 0,
+        "width": 2
+      },
+      "score": 1.0
+    },
+    "name": "length_prefix",
+    "streams_hex": [
+      "000947455420616c706861000c53455420626574612074776f",
+      "00024f4b"
+    ]
+  },
+  {
+    "expected": {
+      "kind": "fixed_size",
+      "messages_hex": [
+        "4142434445464748",
+        "494a4b4c4d4e4f50"
+      ],
+      "params": {
+        "size": 8
+      },
+      "score": 1.0
+    },
+    "name": "fixed_size",
+    "streams_hex": [
+      "4142434445464748",
+      "494a4b4c4d4e4f50"
+    ]
+  },
+  {
+    "expected": {
+      "kind": "whole_stream",
+      "messages_hex": [
+        "ff010203",
+        "fe0405"
+      ],
+      "params": {},
+      "score": 0.0
+    },
+    "name": "opaque_binary",
+    "streams_hex": [
+      "ff010203",
+      "fe0405"
+    ]
+  }
+]

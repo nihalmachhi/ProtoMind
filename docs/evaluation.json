@@ -1,0 +1,98 @@
+{
+  "boundary_case": {
+    "note": "No delimiter, length prefix or fixed size was found; the stream stays opaque.",
+    "scenario": "opaque_binary"
+  },
+  "description": "Deterministic captures generated from hand-written exchanges. They validate the pipeline; they are not a benchmark against real-world protocols.",
+  "details": [
+    {
+      "description": "Five request/reply exchanges with CRLF-delimited text.",
+      "expected_framing": "delimiter",
+      "expected_messages": 10,
+      "expected_sessions": 1,
+      "expected_transitions": 5,
+      "framing_confidence": 1.0,
+      "passed": true,
+      "predicted_framing": "delimiter",
+      "predicted_messages": 10,
+      "predicted_sessions": 1,
+      "predicted_transitions": 5,
+      "scenario": "tinykv_delimiter"
+    },
+    {
+      "description": "Two independent TinyKV sessions in one capture.",
+      "expected_framing": "delimiter",
+      "expected_messages": 20,
+      "expected_sessions": 2,
+      "expected_transitions": 5,
+      "framing_confidence": 1.0,
+      "passed": true,
+      "predicted_framing": "delimiter",
+      "predicted_messages": 20,
+      "predicted_sessions": 2,
+      "predicted_transitions": 5,
+      "scenario": "tinykv_two_sessions"
+    },
+    {
+      "description": "Three exchanges framed by a two-byte big-endian length.",
+      "expected_framing": "length_prefix",
+      "expected_messages": 6,
+      "expected_sessions": 1,
+      "expected_transitions": 3,
+      "framing_confidence": 1.0,
+      "passed": true,
+      "predicted_framing": "length_prefix",
+      "predicted_messages": 6,
+      "predicted_sessions": 1,
+      "predicted_transitions": 3,
+      "scenario": "length_prefix"
+    },
+    {
+      "description": "One request/reply pair where both streams are eight bytes.",
+      "expected_framing": "fixed_size",
+      "expected_messages": 2,
+      "expected_sessions": 1,
+      "expected_transitions": 1,
+      "framing_confidence": 1.0,
+      "passed": true,
+      "predicted_framing": "fixed_size",
+      "predicted_messages": 2,
+      "predicted_sessions": 1,
+      "predicted_transitions": 1,
+      "scenario": "fixed_size"
+    },
+    {
+      "description": "Binary payloads with no delimiter or length structure.",
+      "expected_framing": "whole_stream",
+      "expected_messages": 2,
+      "expected_sessions": 1,
+      "expected_transitions": 1,
+      "framing_confidence": 0.0,
+      "passed": true,
+      "predicted_framing": "whole_stream",
+      "predicted_messages": 2,
+      "predicted_sessions": 1,
+      "predicted_transitions": 1,
+      "scenario": "opaque_binary"
+    }
+  ],
+  "kind": "synthetic",
+  "metrics": {
+    "framing_accuracy": 1.0,
+    "message_count_accuracy": 1.0,
+    "pass_rate": 1.0,
+    "session_accuracy": 1.0,
+    "transition_accuracy": 1.0
+  },
+  "redaction": {
+    "capture": "credentials.pcap",
+    "checked": true,
+    "passed": true
+  },
+  "scenarios": 5,
+  "udp": {
+    "framing": "whole_stream",
+    "messages": 2,
+    "sessions": 1
+  }
+}

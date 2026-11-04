@@ -4,86 +4,197 @@
 
 <h1 align="center">ProtoMind</h1>
 
-ProtoMind is a local-first protocol discovery workbench. Import an authorized PCAP/PCAPNG capture, reassemble TCP streams, infer candidate framing, group observed message types, classify byte fields, learn a prefix-tree Mealy model, and export JSON, Markdown, and Mermaid artifacts.
+<p align="center">
+  <a href="https://github.com/nihalmachhi/ProtoMind/actions/workflows/ci.yml"><img src="https://github.com/nihalmachhi/ProtoMind/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" /></a>
+  <img src="https://img.shields.io/badge/python-3.11%2B-blue.svg" alt="Python 3.11 or newer" />
+  <img src="https://img.shields.io/badge/coverage-80%25%2B-brightgreen.svg" alt="Coverage gate 80 percent" />
+</p>
 
-The first build focuses on a transparent, reproducible baseline for plaintext lab protocols such as TinyKV. Statistical inference is kept separate from any optional language-model naming; no language model makes structural decisions. Active probes are only allowed to literal loopback IP addresses in this build. Hostnames and external/private-network targets are refused.
+**A local-first workbench that turns an authorized packet capture into an inspectable protocol hypothesis.**
+
+Live site: https://nihalmachhi.github.io/ProtoMind/
+
+ProtoMind reassembles TCP and UDP streams, infers message framing, groups observed
+message types, proposes field boundaries, learns a prefix-tree Mealy model, and
+exports JSON, Markdown and Mermaid artifacts. Every boundary is labelled as a
+hypothesis with confidence and evidence. Active probes are off by default and
+restricted to literal loopback targets.
+
+> **Synthetic data.** The evaluation report is generated from hand-written captures.
+> It verifies the pipeline; it is not evidence of real-world protocol accuracy.
+
+---
+
+## Why this exists
+
+- **Protocol work starts with structure.** Before you can test a parser, you need to
+  know where messages begin and end, which fields repeat, and which replies follow
+  which requests.
+- **Most tools are opaque.** ProtoMind keeps framing scores, message groups, field
+  confidence and state transitions visible instead of hiding them behind a single
+  answer.
+- **Active probing is risky.** The passive pipeline needs no network access. The one
+  active endpoint is loopback-only, rate-limited and timed out.
+- **Claims should be reproducible.** The evaluation, site fixtures and docs are
+  generated from the same Python code and checked in CI.
+
+## What it does
+
+| Area | Implementation |
+|---|---|
+| **Capture input** | Offline PCAP/PCAPNG parsing with a size limit and extension check. |
+| **Reassembly** | Directional TCP streams with sequence ordering, duplicate and overlap handling; UDP datagrams preserved. |
+| **Framing** | CRLF/LF/NUL delimiters, 1/2/4-byte length prefixes in both endiannesses, fixed-size records and an opaque fallback. |
+| **Message grouping** | Direction plus first-token labels with observed examples. |
+| **Field hypotheses** | Constant columns, the first varying region, printable-string detection and confidence. |
+| **State model** | Prefix-tree Mealy hypothesis from observed request/reply pairs. |
+| **Artifacts** | JSON IR, Markdown spec and Mermaid state diagram. |
+| **Run store** | SQLite metadata with capture SHA-256 and result JSON; connections close after each operation. |
+| **Guarded probes** | Literal loopback IPs only, no DNS, 2s timeout, 30 requests/minute. |
+| **Redaction** | AUTH, LOGIN and PASS arguments are masked before examples and experiment rows are stored. |
+| **Evaluation** | Deterministic synthetic captures with framing, message, session and transition checks. |
 
 ## How it works
 
-ProtoMind passively turns an authorized capture into candidate protocol structure. Each inferred boundary, field label, and state transition is a hypothesis that should be checked against the trace.
-
 ```mermaid
 flowchart LR
-  A[Authorized PCAP or PCAPNG] --> B[Offline packet parsing]
-  B --> C[TCP stream reassembly]
-  C --> D[Candidate frame segmentation]
-  D --> E[Message grouping and field hypotheses]
-  E --> F[Prefix-tree Mealy model]
-  F --> G[JSON, Markdown, and Mermaid spec]
-  G --> H[React dashboard]
+  A[Authorized PCAP or PCAPNG] --> B[Capture reader]
+  B --> C[Directional streams]
+  C --> D[Framing segmenters]
+  D --> E[Message grouping]
+  E --> F[Field hypotheses]
+  E --> G[Prefix-tree Mealy model]
+  F --> H[JSON / Markdown / Mermaid]
+  G --> H
+  H --> I[SQLite + FastAPI]
+  I --> J[Static site]
 ```
 
-Statistical inference makes structural decisions; optional language-model naming is kept separate. Active experiments are disabled by default and restricted to literal loopback targets. Encrypted or compressed payloads cannot be inferred by this build.
+Read [docs/architecture.md](docs/architecture.md) for the stage details and
+[docs/threat-model.md](docs/threat-model.md) for the adversarial assumptions.
 
-## Run locally
+## Quick start
 
-Requires Python 3.11+ and Node.js 20+.
+**Requirements:** Python 3.11+, [uv](https://docs.astral.sh/uv/), Node.js 22 for the
+site, and Docker Compose v2 if you want the contained API container.
 
-```powershell
+```bash
 uv sync --extra dev
+uv run python scripts/tools/generate_tinykv_capture.py
 uv run uvicorn protomind.api.main:app --reload
 ```
 
-Or run the API and React dashboard together with Docker Desktop:
+Open <http://127.0.0.1:8000/docs>, upload
+`data/captures/tinykv-demo.pcap`, then inspect the run, message types, fields and
+state machine. The demo capture contains demo-only credentials (`demo` / `demo`).
 
-```powershell
-docker compose up --build
-```
+Run the site separately:
 
-For a local frontend development server, use a second terminal:
-
-```powershell
-cd dashboard
-npm install
+```bash
+cd site
+npm ci
 npm run dev
 ```
 
-Generate a safe synthetic TinyKV capture and analyze it with the API or dashboard:
+Or run the API in the contained Compose service:
 
-```powershell
-uv run python tools/generate_tinykv_capture.py
+```bash
+docker compose up --build
 ```
 
-Then upload `data/captures/tinykv-demo.pcap` in the dashboard. The generated trace contains demo-only credentials (`demo` / `demo`).
+The Compose service publishes `127.0.0.1:8000` only.
 
-Open http://localhost:5173. API docs: http://localhost:8000/docs. Upload an authorized PCAP from the dashboard, then inspect sessions, inferred types, fields, machine, and generated spec.
+## API
 
-## Test
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/health` | Liveness. |
+| `POST` | `/captures` | Upload a capture and run the pipeline. |
+| `GET` | `/runs/{run_id}` | Run status and result. |
+| `GET` | `/runs/{run_id}/artifacts/{json,markdown,mermaid}` | Download artifacts. |
+| `POST` | `/experiments/query` | Guarded loopback probe. |
 
-```powershell
-uv run pytest
+See [docs/api.md](docs/api.md) for limits, status codes and settings.
+
+## Verify it
+
+```bash
 uv run ruff check .
-cd dashboard
+uv run ruff format --check .
+uv run mypy src
+uv run pytest -q --cov=protomind --cov-report=term-missing
+uv run python -m protomind.evaluation
+uv run python site/scripts/export_fixtures.py
+
+cd site
+npm ci
+npm run lint
+npm run typecheck
+npm test -- --run
 npm run build
 ```
 
-## Architecture
+The Python suite enforces 80% branch coverage. The generated report lives at
+[docs/evaluation.md](docs/evaluation.md) and is labelled synthetic. The site
+simulator is tested against fixtures generated from the Python segmenters.
 
-- `protomind/capture`: offline packet parsing and directional TCP stream assembly.
-- `protomind/segmentation`: delimiter, length-prefix, and fixed-size candidates plus scoring.
-- `protomind/clustering` and `fields`: observed type grouping and conservative field classification.
-- `protomind/statemachine`: passive prefix-tree Mealy model from request/reply traces.
-- `protomind/spec`: JSON IR, Mermaid diagram, and Markdown export.
-- `protomind/safety`: allowlist and bounded-rate checks for optional lab interactions.
-- `protomind/storage` and `api`: run metadata, capture upload, pipeline and artifact routes.
-- `targets/tinykv`: a toy protocol implementation for a controlled local demo. Start it with `uv run python targets/tinykv/server.py`; it binds to loopback only.
-- `dashboard`: React and React Router interface.
+## Project layout
 
-## Lab experiment endpoint
+```
+src/protomind/
+  capture/       PCAP parsing and directional stream assembly
+  segmentation/  delimiter, length-prefix and fixed-size candidates
+  clustering/    observed message grouping
+  fields/        constant-column and varying-region hypotheses
+  statemachine/  prefix-tree Mealy model
+  spec/          JSON, Markdown and Mermaid export
+  safety/        loopback target guard and credential redaction
+  storage/       SQLite run and experiment store
+  api/           FastAPI app and settings
+  pipeline.py    stage orchestration
+  evaluation.py  deterministic synthetic evaluation
+docs/            architecture, threat model, privacy, API, testing, limitations
+site/            React 19 + Vite showcase and framing lab
+scripts/tools/   synthetic TinyKV capture generator
+targets/tinykv/  toy loopback protocol for demos
+tests/           unit and integration tests
+```
 
-`POST /experiments/query` accepts one line and a `127.0.0.1:port` target. It is rate-limited to 30 requests per minute and records redacted login inputs in the experiment table. The default dashboard performs passive analysis only. Never point active experiments at a system you do not own.
+## Safety
 
-## Limits
+- Use only captures and systems you own or are authorized to inspect.
+- Passive analysis is offline. Active probes are disabled unless you call the guarded
+  endpoint.
+- The guard accepts literal loopback IPs by default; DNS names and external addresses
+  are refused.
+- Raw captures are retained locally and are not redacted. Do not upload secrets.
+- The API has no authentication or TLS. Keep it on loopback.
+- There is no scanning, exploit generation, TLS decryption or malware analysis.
 
-Encrypted or compressed application payloads are not decoded. TCP overlap handling and message framing are intentionally conservative; inferred boundaries and field labels are hypotheses with confidence, not protocol truth. This build does not claim 90% field-boundary F1 until evaluated on labeled captures. Active state learning is not enabled by default. Do not upload captures containing secrets to a shared repository.
+## Scope and limitations
 
+This is a local learning build, not a production protocol reverse-engineering suite.
+Framing, field labels and state transitions are hypotheses. The evaluation uses five
+hand-written captures, so a 100% pass rate means the implementation matches its
+fixtures, not that it understands arbitrary protocols. Read
+[docs/limitations.md](docs/limitations.md) before drawing conclusions from the output.
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Threat model](docs/threat-model.md)
+- [Privacy](docs/privacy.md)
+- [API](docs/api.md)
+- [Testing](docs/testing.md)
+- [Synthetic evaluation](docs/evaluation.md)
+- [Limitations](docs/limitations.md)
+- [Final QA](docs/qa.md)
+
+## Author
+
+**Nihal Machhi** · [GitHub](https://github.com/nihalmachhi)
+
+## License
+
+MIT. See [LICENSE](LICENSE).

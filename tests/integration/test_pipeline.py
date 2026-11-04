@@ -8,6 +8,9 @@ def test_tinykv_capture_produces_machine_and_spec(tmp_path):
     capture = write_tinykv_capture(tmp_path / "tinykv.pcap")
     streams = read_capture(capture)
     assert {stream.direction for stream in streams} == {"C2S", "S2C"}
+    client_stream = next(stream for stream in streams if stream.direction == "C2S")
+    assert client_stream.data.startswith(b"HELLO demo\r\nAUTH demo demo\r\n")
+    assert b"\r\n\n" not in client_stream.data
     result = analyze_capture(capture, tmp_path / "run")
     assert result["sessions"] == 1
     assert result["framing"]["kind"] == "delimiter"

@@ -72,6 +72,9 @@ def read_capture(path: str | Path) -> list[ByteStream]:
                     next_seq = seq + len(payload)
                 elif seq + len(payload) <= next_seq:
                     continue
+                elif seq == next_seq:
+                    chunks.append(payload)
+                    next_seq = seq + len(payload)
                 elif seq < next_seq:
                     overlap = next_seq - seq
                     chunks.append(payload[overlap:])

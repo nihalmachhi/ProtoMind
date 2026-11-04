@@ -1,41 +1,138 @@
-import { useState } from "react";
-import { periodicityScore } from "../features/simulator/engine";
+import { useMemo, useState } from "react";
+import { content } from "../data/content";
+import {
+  bytesToDisplay,
+  bytesToHex,
+  inferFramingHex,
+  type Segmentation,
+} from "../features/simulator/engine";
+import framingData from "../features/simulator/__fixtures__/framing.generated.json";
 
-function buildBeacon(period: number, jitter: number, n: number): number[] {
-  const out: number[] = [];
-  for (let i = 0; i < n; i++) {
-    out.push(i * period + (Math.sin(i) * jitter * period) / 100);
+interface FramingCase {
+  name: string;
+  streams_hex: string[];
+  expected: {
+    kind: string;
+    score: number;
+    params: Record<string, string | number>;
+    messages_hex: string[];
+  };
+}
+
+const CASES = framingData as FramingCase[];
+
+const LABELS: Record<string, string> = {
+  tinykv_delimiter: "CRLF text",
+  length_prefix: "Length prefix",
+  fixed_size: "Fixed size",
+  opaque_binary: "Opaque binary",
+};
+
+function infer(input: string): { result?: Segmentation; error?: string } {
+  const streams = input
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!streams.length) return { error: content.simulator.result.invalid };
+  try {
+    return { result: inferFramingHex(streams) };
+  } catch {
+    return { error: content.simulator.result.invalid };
   }
-  return out;
 }
 
 export function Simulator() {
-  const [period, setPeriod] = useState(30);
-  const [jitter, setJitter] = useState(5);
-  const [threshold, setThreshold] = useState(0.75);
-  const [n, setN] = useState(8);
-  const times = buildBeacon(period, jitter, n);
-  const res = periodicityScore(times);
-  const fires = res.score >= threshold;
+  const [input, setInput] = useState(CASES[0].streams_hex.join("\n"));
+  const [selected, setSelected] = useState(CASES[0].name);
+  const { result, error } = useMemo(() => infer(input), [input]);
+
   return (
     <section className="sec" id="try">
       <div className="wrap">
-        <h2 style={{ fontSize: "clamp(1.8rem,4vw,2.6rem)", letterSpacing: "-0.035em", lineHeight: 1.05, maxWidth: "18ch" }}>Deception lab</h2>
-        <p style={{ marginTop: 12, color: "var(--mu)", maxWidth: "60ch" }}>Run scripted benign actors against three on-screen decoys with a TypeScript port of the session builder.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 24 }}>
-          <div style={{ background: "var(--p)", border: "1px solid var(--ln)", borderRadius: 16, padding: 20 }}>
-            <label>Period (s): {period}<br /><input type="range" min={5} max={120} value={period} onChange={(e) => setPeriod(+e.target.value)} /></label><br />
-            <label>Jitter (%): {jitter}<br /><input type="range" min={0} max={60} value={jitter} onChange={(e) => setJitter(+e.target.value)} /></label><br />
-            <label>Connections: {n}<br /><input type="range" min={4} max={20} value={n} onChange={(e) => setN(+e.target.value)} /></label><br />
-            <label>Threshold: {threshold.toFixed(2)}<br /><input type="range" min={0.5} max={0.95} step={0.05} value={threshold} onChange={(e) => setThreshold(+e.target.value)} /></label>
-            <button onClick={() => { setJitter(60); setPeriod(30); }} style={{ marginTop: 12, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--ln)", background: "var(--p2)", color: "var(--fg)", cursor: "pointer" }}>Make it evade</button>
+        <h2>{content.simulator.heading}</h2>
+        <p className="lead2">{content.simulator.intro}</p>
+        <div className="sim">
+          <div className="shead">
+            <span>{content.simulator.presets}</span>
+            <div className="ctl">
+              {CASES.map((item) => (
+                <button
+                  key={item.name}
+                  className={`pill${selected === item.name ? " w" : ""}`}
+                  aria-pressed={selected === item.name}
+                  onClick={() => {
+                    setSelected(item.name);
+                    setInput(item.streams_hex.join("\n"));
+                  }}
+                >
+                  {LABELS[item.name] ?? item.name}
+                </button>
+              ))}
+            </div>
           </div>
-          <div style={{ background: "var(--p)", border: "1px solid var(--ln)", borderRadius: 16, padding: 20, fontFamily: "var(--fm)", fontSize: "0.85rem" }}>
-            <div>score: {res.score}</div>
-            <div>period_s: {res.period_s}</div>
-            <div>within 10%: {res.within_ten_percent}</div>
-            <div>robust_cv: {res.robust_cv}</div>
-            <div style={{ marginTop: 12, color: fires ? "var(--bad)" : "var(--ok)" }}>{fires ? "Alert fires" : "No alert"}</div>
+          <div className="scols">
+            <div>
+              <label htmlFor="framing-input">
+                <h3>{content.simulator.customLabel}</h3>
+              </label>
+              <textarea
+                id="framing-input"
+                value={input}
+                onChange={(event) => {
+                  setSelected("custom");
+                  setInput(event.target.value);
+                }}
+                spellCheck={false}
+                rows={10}
+                style={{
+                  width: "100%",
+                  marginTop: 8,
+                  background: "#0a0a0b",
+                  border: "1px solid var(--ln)",
+                  borderRadius: 12,
+                  color: "var(--fg)",
+                  padding: 14,
+                  font: "400 0.78rem/1.6 var(--fm)",
+                  resize: "vertical",
+                }}
+              />
+              <p className="note" style={{ textAlign: "left", margin: "10px 0 0" }}>
+                {content.simulator.note}
+              </p>
+            </div>
+            <div>
+              {error && <p className="no">{error}</p>}
+              {result && (
+                <>
+                  <div className="stats">
+                    <div className="stat">
+                      <b>{result.kind}</b>
+                      <span>{content.simulator.result.kind}</span>
+                    </div>
+                    <div className="stat">
+                      <b>{result.score.toFixed(2)}</b>
+                      <span>{content.simulator.result.score}</span>
+                    </div>
+                    <div className="stat">
+                      <b>{result.messages.length}</b>
+                      <span>{content.simulator.result.messages}</span>
+                    </div>
+                  </div>
+                  <p className="sub">
+                    {content.simulator.result.params}: <code>{JSON.stringify(result.params)}</code>
+                  </p>
+                  <ul className="lst" style={{ marginTop: 10 }}>
+                    {result.messages.length === 0 && <li>{content.simulator.result.noMessages}</li>}
+                    {result.messages.map((message, index) => (
+                      <li key={`${index}-${bytesToHex(message)}`}>
+                        <b>#{index + 1}</b> {bytesToDisplay(message)}
+                        <div className="sub">{bytesToHex(message)}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
