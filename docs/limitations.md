@@ -38,10 +38,10 @@ should be stated whenever the project is described.
 
 ## Verification gaps
 
-- Docker Desktop's Linux engine was not running during this pass, so image build and
-  live container inspection were not executed locally. `docker compose config -q`
-  and static checks passed. CI builds the image but does not start the stack. See
-  [Final QA](qa.md#docker-verification-gap).
+- The container was built, started and exercised locally on 2026-11-05: the
+  healthcheck passed, a demo capture completed end to end, and runtime controls
+  were inspected. CI still builds the image but does not start the stack. See
+  [Final QA](qa.md#docker-runtime-verification).
 - The site is tested with Vitest and a production build, not browser automation.
 - `npm audit` reports moderate findings in development-only lint tooling; the
   production dependency tree reports zero findings.

@@ -5,9 +5,9 @@ below on the commit you intend to show.
 
 ## Scope
 
-- Date: 2026-11-04
+- Date: 2026-11-05
 - Branch: `main`
-- Commit tested: `22237a4` (`feat: rebuild ProtoMind around verified synthetic evaluation`)
+- Commit tested: `ea98f0b` (`fix: quote compose tmpfs options so the container starts`)
 - Local environment: Windows, Python 3.13.7, Node.js 22.19.0, npm 10.9.3
 - Fresh-clone environment: `uv` resolved CPython 3.12.12, Node.js 22.19.0,
   npm 10.9.3
@@ -19,7 +19,7 @@ below on the commit you intend to show.
 | Python lint | `uv run ruff check .` | pass |
 | Python format | `uv run ruff format --check .` | pass, 45 files |
 | Python types | `uv run mypy src` | pass, 23 files |
-| Python tests | `uv run pytest -q --cov=protomind --cov-report=term-missing` | 16 passed |
+| Python tests | `uv run pytest -q --cov=protomind --cov-report=term-missing` | 17 passed |
 | Coverage gate | same as above | 88.11% branch coverage (gate 80%) |
 | Evaluation | `uv run python -m protomind.evaluation` | pass, 5 scenarios, 100% framing/message/session/transition |
 | Fixture export | `uv run python site/scripts/export_fixtures.py` | pass, no content diff |
@@ -30,6 +30,10 @@ below on the commit you intend to show.
 | Production audit | `npm audit --omit=dev` | 0 findings |
 | Dev audit | `npm audit` | 7 moderate findings in lint tooling, no fix available |
 | Compose config | `docker compose config -q` | pass |
+| Container build | `docker compose build` | pass |
+| Container health | `docker compose up -d`, healthcheck | healthy |
+| End-to-end upload | demo capture through `/captures` | complete, 10 messages, delimiter framing |
+| Runtime controls | `docker inspect` | uid 10001, read-only root, all caps dropped, 256M / 64 pids |
 
 Re-running the evaluation and fixture exporter produced no content diff in
 `docs/evaluation.json`, `docs/evaluation.md`, `site/src/data/results.generated.json`
@@ -42,7 +46,7 @@ therefore match the committed report.
 
 ## Fresh-clone check
 
-A clean clone of `origin/main` at `22237a4` was created outside the working tree
+A clean clone of `origin/main` at `ea98f0b` was created outside the working tree
 and verified without reusing local build artifacts:
 
 ```bash
@@ -68,34 +72,42 @@ npm test
 npm run build
 ```
 
-All steps passed. The clone was clean after the generated-report check, so the
-committed artifacts reproduce from the committed source. `npm audit --omit=dev`
-reported zero production vulnerabilities.
+All steps passed (17 tests). The clone was clean after the generated-report check,
+so the committed artifacts reproduce from the committed source.
+`npm audit --omit=dev` reported zero production vulnerabilities.
 
-## Docker verification gap
+## Docker runtime verification
 
-Static configuration passed:
+Docker Desktop's Linux engine was available on 2026-11-05, so the image was built,
+started and exercised:
 
 ```bash
 docker compose config -q
+docker compose build
+docker compose up -d
+curl -s http://127.0.0.1:8000/health
+curl -s -X POST -F "file=@data/captures/tinykv-demo.pcap" http://127.0.0.1:8000/captures
+docker inspect --format '{{.Config.User}}' protomind-api-1
 ```
 
-Image build and live container inspection could not run on this machine:
+Results:
 
-```text
-error during connect: Head "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/_ping":
-open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
-```
+- The healthcheck reached `healthy` and `/health` returned `{"status":"ok"}`.
+- Uploading the generated demo capture completed the pipeline: delimiter framing,
+  10 messages, one session and five observed transitions. AUTH examples were
+  stored redacted.
+- Run lookup and Markdown/Mermaid artifact downloads returned the expected data.
+- `docker inspect` confirmed uid/gid `10001:10001`, a read-only root filesystem,
+  `CapDrop=["ALL"]`, a 256 MiB memory limit and a 64-process limit.
+- The container publishes only `127.0.0.1:8000`.
 
-Consequences:
+The first live run exposed a real bug: the unquoted YAML flow sequence
+`tmpfs: [/tmp:rw,noexec,nosuid,size=16m]` split the options on commas, so Docker
+treated `size=16m` as a mount path and refused to start the container. Quoting the
+value fixed it, and `tests/unit/test_packaging.py` now guards the compose file.
 
-- `docker compose build` and container startup are unverified locally.
-- The Compose hardening (non-root user, read-only root, dropped capabilities,
-  tmpfs, resource limits, loopback-only port) is declared in `docker-compose.yml`
-  but not confirmed by inspecting a live container.
-- CI runs `docker compose config -q` and `docker compose build`, but it does not
-  start the stack or inspect live containers.
-- Do not claim a live end-to-end container run until this is executed and recorded.
+CI still runs only `docker compose config -q` and `docker compose build`; it does
+not start the stack. The runtime results above are a local point-in-time record.
 
 ## Known non-blocking findings
 

@@ -34,5 +34,5 @@ process. Do not upload captures you are not authorized to inspect.
 - Raw captures are retained indefinitely unless an operator deletes them.
 - The active endpoint returns the target's reply to the caller. It is not a
   sandboxed interaction service.
-- Container runtime behavior was not verified locally in this pass; see
-  [Final QA](qa.md#docker-verification-gap).
+- Container runtime behavior was verified locally on 2026-11-05; CI still does
+  not start the stack. See [Final QA](qa.md#docker-runtime-verification).
